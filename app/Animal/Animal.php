@@ -41,36 +41,76 @@ class Animal
         return $this->satiety;
     }
 
+
+    public function setHappiness(int $happiness): void
+    {
+        $this->happiness = max(self::MIN_HAPPINESS, min(self::MAX_HAPPINESS, $happiness));
+    }
+
+    public function setSatiety(int $satiety): void
+    {
+        $this->satiety = max(self::MIN_SATIETY, min(self::MAX_SATIETY, $satiety));
+    }
+
+
     public function feed(string $food): string
     {
-        if ($food === $this->foodPreference) {
-            $this->satiety = min($this->satiety + 5, self::MAX_SATIETY);
-            $this->happiness = min($this->happiness + 5, self::MAX_HAPPINESS);
-            $message = "Fed {$this->name} with $food. Happiness and Satiety increased.";
-        } else {
-            $this->satiety = max($this->satiety - 5, self::MIN_SATIETY);
-            $this->happiness = max($this->happiness - 10, self::MIN_HAPPINESS);
-            $message = "Fed {$this->name} with $food. It's not their preferred food. Happiness and Satiety decreased.";
+        if ($this->satiety >= self::MAX_SATIETY) {
+            return "{$this->name} is already fully satiated.";
         }
 
-        return $message;
+        if ($food === $this->foodPreference) {
+            $this->setSatiety($this->satiety + 5);
+            $this->setHappiness($this->happiness + 5);
+            return "Fed {$this->name} with $food. Happiness and Satiety increased.";
+        } else {
+            $this->setSatiety($this->satiety - 5);
+            $this->setHappiness($this->happiness - 10);
+            return "Fed {$this->name} with $food. It's not their preferred food. Happiness and Satiety decreased.";
+        }
     }
 
-    public function pet(int $duration): void
+
+    public function pet(int $duration): string
     {
-        $this->happiness = min($this->happiness + ($duration * 5), self::MAX_HAPPINESS);
-        $this->satiety = max($this->satiety - ($duration * 5), self::MIN_SATIETY);
+        if ($this->satiety <= self::MIN_SATIETY) {
+            return "{$this->name} is dying from hunger!";
+        }
+
+        if ($this->happiness >= self::MAX_HAPPINESS) {
+            return "{$this->name} is overexcited!";
+        }
+
+        $this->setHappiness($this->happiness + ($duration * 5));
+        $this->setSatiety($this->satiety - ($duration * 5));
+        return "Petted {$this->name} for $duration seconds.";
     }
 
-    public function play(int $duration): void
+
+    public function play(int $duration): string
     {
-        $this->happiness = min($this->happiness + ($duration * 5), self::MAX_HAPPINESS);
-        $this->satiety = max($this->satiety - ($duration * 5), self::MIN_SATIETY);
+        if ($this->satiety <= self::MIN_SATIETY) {
+            return "{$this->name} is dying from hunger!";
+        }
+
+        if ($this->happiness >= self::MAX_HAPPINESS) {
+            return "{$this->name} is overexcited!";
+        }
+
+        $this->setHappiness($this->happiness + ($duration * 5));
+        $this->setSatiety($this->satiety - ($duration * 5));
+        return "Played with {$this->name} for $duration seconds.";
     }
 
-    public function work(int $duration): void
+
+    public function work(int $duration): string
     {
-        $this->happiness = max($this->happiness - ($duration * 5), self::MIN_HAPPINESS);
-        $this->satiety = max($this->satiety - ($duration * 5), self::MIN_SATIETY);
+        if ($this->satiety <= self::MIN_SATIETY) {
+            return "{$this->name} is dying from hunger!";
+        }
+
+        $this->setHappiness($this->happiness - ($duration * 5));
+        $this->setSatiety($this->satiety - ($duration * 5));
+        return "Made {$this->name} work for $duration seconds.";
     }
 }

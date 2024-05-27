@@ -3,3 +3,4 @@
 /.vs/
 /vendor/
 /node_modules/
+/.gitignore/
