@@ -1,0 +1,13 @@
+{
+  "require": {
+    "nesbot/carbon": "^2.72",
+    "respect/validation": "^2.2",
+    "symfony/console": "^5.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "Zooapp\\App\\Animals\\": "app/Animal/",
+      "Zooapp\\App\\Zookeeper\\": "app/Zookeeper/"
+    }
+  }
+}
