@@ -1,6 +1,6 @@
 <?php
 
-require 'vendor/autoload.php'; // Autoload Composer dependencies
+require 'vendor/autoload.php';
 
 use Zooapp\App\Zookeeper\Zookeeper;
 
