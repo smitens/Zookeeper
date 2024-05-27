@@ -48,40 +48,55 @@ class Zookeeper
                 continue;
             }
 
-            $food = null;
-            $duration = null;
+            $message = '';
+
+            switch ($action) {
+                case 'pet':
+                case 'play':
+                    if ($animal->getHappiness() >= Animal::MAX_HAPPINESS) {
+                        $message = "{$animal->getName()} is already overexcited and cannot engage in this activity.";
+                    } elseif ($animal->getHappiness() <= Animal::MIN_HAPPINESS) {
+                        $message = "{$animal->getName()} is very unhappy and cannot engage in this activity.";
+                    }
+                    break;
+                case 'work':
+                    if ($animal->getSatiety() <= Animal::MIN_SATIETY) {
+                        $message = "{$animal->getName()} is dying from hunger and cannot engage in this activity.";
+                    }
+                    break;
+                case 'feed':
+                    if ($animal->getSatiety() >= Animal::MAX_SATIETY) {
+                        $message = "{$animal->getName()} is already fully satiated and cannot engage in this activity.";
+                    }
+                    break;
+            }
+
+            if ($message !== '') {
+                echo "$message\n";
+                continue;
+            }
 
             if ($action === 'feed') {
                 $food = readline('Enter the food to feed the animal: ');
-                if ($animal->getFoodPreference() !== $food) {
-                    echo "Please provide {$animal->getName()}'s preferred food: {$animal->getFoodPreference()}\n";
-                    $food = readline('Enter the food to feed the animal: ');
-                }
+                $message = $animal->feed($food);
             } else {
                 $duration = intval(readline('Enter the duration (in minutes): '));
+                switch ($action) {
+                    case 'pet':
+                        $message = $animal->pet($duration);
+                        break;
+                    case 'play':
+                        $message = $animal->play($duration);
+                        break;
+                    case 'work':
+                        $message = $animal->work($duration);
+                        break;
+                }
             }
 
-            switch ($action) {
-                case 'feed':
-                    $message = $animal->feed($food);
-                    echo "$message\n";
-                    $this->logAction($message);
-                    break;
-                case 'pet':
-                    $animal->pet($duration);
-                    $this->logAction("Petted {$animal->getName()} for $duration minutes.");
-                    break;
-                case 'play':
-                    $animal->play($duration);
-                    $this->logAction("Played with {$animal->getName()} for $duration minutes.");
-                    break;
-                case 'work':
-                    $animal->work($duration);
-                    $this->logAction("Made {$animal->getName()} work for $duration minutes.");
-                    break;
-            }
+            echo "$message\n";
+            $this->logAction($message);
 
-            echo "Action: $action on {$animal->getName()}\n";
             $this->displayAnimalStatus();
 
             $continue = readline('Do you want to continue? (yes/no): ');
@@ -112,9 +127,11 @@ class Zookeeper
 
         foreach ($this->animals as $animal) {
             $happinessValue = $animal->getHappiness();
-            $happinessCell = $happinessValue < 50 ? "<fg=red>$happinessValue</>" : "<fg=green>$happinessValue</>";
+            $happinessCell = $happinessValue < 10 ? "<fg=red>$happinessValue</>" :
+                ($happinessValue < 90 ? "<fg=green>$happinessValue</>" : "<fg=red>$happinessValue</>");
             $satietyValue = $animal->getSatiety();
-            $satietyCell = $satietyValue < 50 ? "<fg=red>$satietyValue</>" : "<fg=green>$satietyValue</>";
+            $satietyCell = $satietyValue < 10 ? "<fg=red>$satietyValue</>" :
+                ($satietyValue < 90 ? "<fg=green>$satietyValue</>" : "<fg=red>$satietyValue</>");
             $table->addRow([
                 $animal->getName(),
                 $animal->getFoodPreference(),
@@ -134,9 +151,9 @@ class Zookeeper
 
     private function printSessionLog(): void
     {
-        echo "\nInformation on how you have treated the animals:\n";
+        echo "\n\e[1mInformation on how you have treated the animals:\e[0m\n";
         foreach ($this->sessionLog as $logEntry) {
-            echo "$logEntry\n";
+            echo "-$logEntry\n";
         }
     }
 }
