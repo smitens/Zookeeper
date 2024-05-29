@@ -1,11 +1,47 @@
 <?php
-
 namespace Zooapp\App\Zookeeper;
 
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Validation;
 use Carbon\Carbon;
 use Zooapp\App\Animals\Animal;
+
+class ZookeeperInput
+{
+    /**
+     * @Assert\NotBlank
+     * @Assert\Choice({"Python", "Tarantula", "Monkey", "Penguin"})
+     */
+    public $animalName;
+
+    /**
+     * @Assert\NotBlank
+     * @Assert\Choice({"feed", "pet", "play", "work"})
+     */
+    public $action;
+
+    /**
+     * @Assert\NotBlank(allowNull=true)
+     */
+    public $food;
+
+    /**
+     * @Assert\Type(type="integer")
+     * @Assert\GreaterThanOrEqual(0)
+     * @Assert\NotBlank(allowNull=true)
+     */
+    public $duration;
+
+    public function __construct($animalName, $action, $food = null, $duration = null)
+    {
+        $this->animalName = $animalName;
+        $this->action = $action;
+        $this->food = $food;
+        $this->duration = $duration;
+    }
+}
 
 class Zookeeper
 {
@@ -25,6 +61,7 @@ class Zookeeper
 
     public function run()
     {
+        $validator = Validation::createValidatorBuilder()->enableAnnotationMapping()->getValidator();
         echo "Welcome to Zookeeper!\n";
 
         while (true) {
@@ -33,79 +70,139 @@ class Zookeeper
 
             $this->displayAnimalStatus();
 
-            $animalName = readline('Enter the name of the animal: ');
-            $animal = $this->findAnimal($animalName);
+            do {
+                $animalName = readline('Enter the name of the animal: ');
+                $errors = $validator->validateProperty(new ZookeeperInput($animalName, ''), 'animalName');
+                if (count($errors) > 0) {
+                    foreach ($errors as $error) {
+                        echo $error->getMessage() . "\n";
+                    }
+                }
+            } while (count($errors) > 0);
 
+            $animal = $this->findAnimal($animalName);
             if (!$animal) {
                 echo "Animal not found. Available animals: Python, Tarantula, Monkey, Penguin\n";
                 continue;
             }
 
-            $action = readline('Enter the action to perform (feed, pet, play, work): ');
-
-            if (!in_array($action, ['feed', 'pet', 'play', 'work'])) {
-                echo "Invalid action\n";
-                continue;
-            }
-
-            $message = '';
-
-            switch ($action) {
-                case 'pet':
-                case 'play':
-                    if ($animal->getHappiness() >= Animal::MAX_HAPPINESS) {
-                        $message = "{$animal->getName()} is already overexcited and cannot engage in this activity.";
-                    } elseif ($animal->getHappiness() <= Animal::MIN_HAPPINESS) {
-                        $message = "{$animal->getName()} is very unhappy and cannot engage in this activity.";
+            do {
+                $action = readline('Enter the action to perform (feed, pet, play, work): ');
+                $errors = $validator->validateProperty(new ZookeeperInput($animalName, $action), 'action');
+                if (count($errors) > 0) {
+                    foreach ($errors as $error) {
+                        echo $error->getMessage() . "\n";
                     }
-                    break;
-                case 'work':
-                    if ($animal->getSatiety() <= Animal::MIN_SATIETY) {
-                        $message = "{$animal->getName()} is dying from hunger and cannot engage in this activity.";
-                    }
-                    break;
-                case 'feed':
-                    if ($animal->getSatiety() >= Animal::MAX_SATIETY) {
-                        $message = "{$animal->getName()} is already fully satiated and cannot engage in this activity.";
-                    }
-                    break;
-            }
+                }
+            } while (count($errors) > 0);
 
-            if ($message !== '') {
-                echo "$message\n";
-                continue;
-            }
+            $food = null;
+            $duration = null;
 
             if ($action === 'feed') {
+
                 $food = readline('Enter the food to feed the animal: ');
-                $message = $animal->feed($food);
             } else {
-                $duration = intval(readline('Enter the duration (in minutes): '));
-                switch ($action) {
-                    case 'pet':
-                        $message = $animal->pet($duration);
-                        break;
-                    case 'play':
-                        $message = $animal->play($duration);
-                        break;
-                    case 'work':
-                        $message = $animal->work($duration);
-                        break;
-                }
+
+                do {
+                    $durationInput = readline('Enter the duration (in minutes): ');
+                    if (!ctype_digit($durationInput)) {
+                        echo "Duration must be a positive integer.\n";
+                        continue;
+                    }
+                    $duration = intval($durationInput);
+                    $input = new ZookeeperInput($animalName, $action, null, $duration);
+                    $errors = $validator->validateProperty($input, 'duration');
+                    if (count($errors) > 0) {
+                        foreach ($errors as $error) {
+                            echo $error->getMessage() . "\n";
+                        }
+                    }
+                } while (count($errors) > 0);
             }
 
+            $input = new ZookeeperInput($animalName, $action, $food, $duration);
+            $errors = $validator->validate($input);
+
+            if (count($errors) > 0) {
+                foreach ($errors as $error) {
+                    echo $error->getMessage() . "\n";
+                }
+                continue;
+            }
+
+            $message = $this->performAction($animal, $action, $food, $duration);
             echo "$message\n";
             $this->logAction($message);
 
             $this->displayAnimalStatus();
 
-            $continue = readline('Do you want to continue? (yes/no): ');
-            if (strtolower($continue) !== 'yes') {
+            do {
+                $continue = readline('Do you want to continue? (yes/no): ');
+                $continueGame = strtolower($continue);
+                $errors = $validator->validate($continueGame, [
+                    new Assert\NotBlank(),
+                    new Assert\Choice(['yes', 'no'])
+                ]);
+                if (count($errors) > 0) {
+                    foreach ($errors as $error) {
+                        echo $error->getMessage() . "\n";
+                    }
+                }
+            } while (count($errors) > 0);
+
+            if ($continueGame !== 'yes') {
                 echo "Thank you for taking care!\n";
                 $this->printSessionLog();
                 break;
             }
         }
+    }
+
+    private function performAction($animal, $action, $food, $duration): string
+    {
+        $message = '';
+        switch ($action) {
+            case 'pet':
+            case 'play':
+                if ($animal->getHappiness() >= Animal::MAX_HAPPINESS) {
+                    $message = "{$animal->getName()} is already overexcited and cannot engage in this activity.";
+                } elseif ($animal->getHappiness() <= Animal::MIN_HAPPINESS) {
+                    $message = "{$animal->getName()} is very unhappy and cannot engage in this activity.";
+                }
+                break;
+            case 'work':
+                if ($animal->getSatiety() <= Animal::MIN_SATIETY) {
+                    $message = "{$animal->getName()} is dying from hunger and cannot engage in this activity.";
+                }
+                break;
+            case 'feed':
+                if ($animal->getSatiety() >= Animal::MAX_SATIETY) {
+                    $message = "{$animal->getName()} is already fully satiated and cannot engage in this activity.";
+                }
+                break;
+        }
+
+        if ($message !== '') {
+            return $message;
+        }
+
+        switch ($action) {
+            case 'feed':
+                $message = $animal->feed($food);
+                break;
+            case 'pet':
+                $message = $animal->pet($duration);
+                break;
+            case 'play':
+                $message = $animal->play($duration);
+                break;
+            case 'work':
+                $message = $animal->work($duration);
+                break;
+        }
+
+        return $message;
     }
 
     private function findAnimal(string $name): ?Animal

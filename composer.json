@@ -2,7 +2,10 @@
   "require": {
     "nesbot/carbon": "^2.72",
     "respect/validation": "^2.2",
-    "symfony/console": "^5.4"
+    "symfony/console": "^5.4",
+    "symfony/validator": "^5.4",
+    "doctrine/annotations": "^2.0",
+    "symfony/cache": "^5.4"
   },
   "autoload": {
     "psr-4": {
